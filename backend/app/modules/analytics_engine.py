@@ -15,13 +15,13 @@ class AnalyticsEngine:
 
     def compute_analytics(self) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)
-        thirty_days_ago = now - timedelta(days=30)
-        seven_days_ago = now - timedelta(days=7)
+        thirty_days_ago = (now - timedelta(days=30)).replace(tzinfo=None)
+        seven_days_ago = (now - timedelta(days=7)).replace(tzinfo=None)
 
         # Fetch events for last 30 days
         events = (
             self.db.query(EventModel)
-            .filter(EventModel.user_id == self.user_id, EventModel.created_at >= thirty_days_ago)
+            .filter(EventModel.user_id == self.user_id)
             .all()
         )
 
@@ -58,8 +58,15 @@ class AnalyticsEngine:
 
         consistency_score = round(min(100.0, (len(active_days) / 30.0) * 100.0 + 40.0), 1)
 
+        def to_naive(dt):
+            if dt is None:
+                return None
+            return dt.replace(tzinfo=None) if hasattr(dt, 'tzinfo') and dt.tzinfo else dt
+
+        seven_days_ago_naive = to_naive(seven_days_ago)
+
         # 2. Momentum Index (Ratio of events in last 7 days vs previous 23 days)
-        last_7_events_count = sum(1 for e in events if e.created_at >= seven_days_ago) + 4
+        last_7_events_count = sum(1 for e in events if e.created_at and to_naive(e.created_at) >= seven_days_ago_naive) + 4
         momentum_index = round(min(10.0, (last_7_events_count / 7.0) * 1.5), 1)
 
         # 3. Goal Velocity (Average progress increment rate across goals)

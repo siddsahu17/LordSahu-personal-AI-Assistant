@@ -53,6 +53,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Ensure DB tables exist on import
+init_db()
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,

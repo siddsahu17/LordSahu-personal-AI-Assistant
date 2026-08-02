@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 
 # --- Event Schemas ---
 class EventEntity(BaseModel):
@@ -30,8 +30,7 @@ class EventResponse(EventBase):
     updated_at: datetime
     version: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Memory Schemas ---
 class MemoryCreate(BaseModel):
@@ -48,8 +47,7 @@ class MemoryResponse(MemoryCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Goal Schemas ---
 class Milestone(BaseModel):
@@ -81,8 +79,7 @@ class GoalResponse(GoalCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Task Schemas ---
 class TaskCreate(BaseModel):
@@ -100,8 +97,7 @@ class TaskResponse(TaskCreate):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Knowledge Doc Schemas ---
 class KnowledgeDocCreate(BaseModel):
@@ -116,8 +112,7 @@ class KnowledgeDocResponse(KnowledgeDocCreate):
     user_id: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Chat & Core Intelligence Orchestration Schemas ---
 class ChatMessageCreate(BaseModel):
