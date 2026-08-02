@@ -49,6 +49,8 @@ def test_chat_pipeline():
 
 def test_goals():
     with TestClient(app) as client:
+        # Create goal first
+        client.post("/api/goals", json={"title": "Master Clean Architecture", "workspace_id": "projects", "target_value": 10.0})
         response = client.get("/api/goals")
         assert response.status_code == 200
         goals = response.json()

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { sendChatMessage, fetchChatHistory, fetchMemories } from '../api';
 
+import { voiceProvider } from '../utils/voiceProvider';
+
 export default function Chat({ currentMode, setCurrentMode, activeWorkspace }) {
   const [messages, setMessages] = useState([]);
   const [pinnedMemories, setPinnedMemories] = useState([]);
@@ -24,7 +26,6 @@ export default function Chat({ currentMode, setCurrentMode, activeWorkspace }) {
   const [isMuted, setIsMuted] = useState(false);
 
   const messagesEndRef = useRef(null);
-  const recognitionRef = useRef(null);
 
   const loadData = async () => {
     try {
@@ -52,65 +53,30 @@ export default function Chat({ currentMode, setCurrentMode, activeWorkspace }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Speech Recognition Setup
-  useEffect(() => {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = 'en-US';
-
-      rec.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        setIsRecording(false);
-        handleSend(transcript);
-      };
-
-      rec.onerror = () => setIsRecording(false);
-      rec.onend = () => setIsRecording(false);
-
-      recognitionRef.current = rec;
-    }
-  }, []);
-
   const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in this browser. Try Chrome or Edge.');
-      return;
-    }
     if (isRecording) {
-      recognitionRef.current.stop();
+      voiceProvider.stopListening();
       setIsRecording(false);
     } else {
       setIsRecording(true);
-      recognitionRef.current.start();
+      const started = voiceProvider.listen(
+        (transcript) => {
+          setInput(transcript);
+          setIsRecording(false);
+          handleSend(transcript);
+        },
+        (err) => {
+          console.log('STT Error:', err);
+          setIsRecording(false);
+        },
+        () => setIsRecording(false)
+      );
+      if (!started) setIsRecording(false);
     }
   };
 
   const speakText = (text) => {
-    if (isMuted || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-
-    // Select female voice from browser voices list
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoice = voices.find((v) =>
-      v.name.includes('Female') ||
-      v.name.includes('Samantha') ||
-      v.name.includes('Zira') ||
-      v.name.includes('Victoria') ||
-      v.name.includes('Karen') ||
-      v.name.includes('Google UK English Female') ||
-      v.name.includes('Google US English')
-    );
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
-    }
-    utterance.pitch = 1.1; // Slightly higher pitch for natural female voice tone
-    utterance.rate = 1.0;
-    window.speechSynthesis.speak(utterance);
+    voiceProvider.speak(text, { isMuted });
   };
 
   const handleSend = async (textToSend = input) => {

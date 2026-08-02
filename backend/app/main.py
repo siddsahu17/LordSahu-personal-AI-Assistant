@@ -1,4 +1,5 @@
 import os
+from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +41,12 @@ async def lifespan(app: FastAPI):
         count = db.query(WorkspaceModel).count()
         if count == 0:
             for w in DEFAULT_WORKSPACES:
-                db_ws = WorkspaceModel(**w)
+                db_ws = WorkspaceModel(
+                    id=w["id"],
+                    name=w["name"],
+                    slug=w["id"],
+                    description=w.get("description", "")
+                )
                 db.add(db_ws)
             db.commit()
     finally:
@@ -76,15 +82,10 @@ def handle_chat(payload: ChatMessageCreate, db: Session = Depends(get_db)):
     return orchestrator.process_message(payload)
 
 @app.get("/api/chat/history")
-def get_chat_history(user_id: str = "default_user", db: Session = Depends(get_db)):
-    from app.models import ChatMessageModel
-    messages = (
-        db.query(ChatMessageModel)
-        .filter(ChatMessageModel.user_id == user_id)
-        .order_by(ChatMessageModel.created_at.asc())
-        .limit(50)
-        .all()
-    )
+def get_chat_history(user_id: str = "default_user", session_id: Optional[str] = None, db: Session = Depends(get_db)):
+    from app.repositories.chat_repository import ChatRepository
+    chat_repo = ChatRepository(db)
+    messages = chat_repo.list_messages(user_id=user_id, session_id=session_id, limit=50)
     return [
         {
             "id": m.id,
