@@ -4,13 +4,16 @@ from typing import Dict, Any, List, Tuple
 VALID_INTENTS = {
     "QUERY_WORKSPACES", "QUERY_GOALS", "QUERY_EVENTS", "QUERY_TASKS", "QUERY_MEMORIES",
     "CREATE_GOAL", "DELETE_GOAL", "CREATE_TASK", "DELETE_TASK", "DELETE_MEMORY",
-    "LOG_WEIGHT", "LOG_STUDY", "LOG_WORKOUT", "MORNING_BRIEFING", "LEARN_PREFERENCE", "GENERAL_CHAT"
+    "LOG_WEIGHT", "LOG_WORKOUT", "LOG_SPORT", "LOG_MEAL", "LOG_WATER", "LOG_SLEEP", "LOG_PR",
+    "LOG_STUDY", "LOG_CONCEPT", "LOG_PROBLEM", "LOG_JOB_APP", "LOG_RESUME", "LOG_LECTURE",
+    "LOG_ASSIGNMENT", "LOG_EXPENSE", "LOG_INCOME", "LOG_JOURNAL", "LOG_MOOD", "LOG_FEATURE", "LOG_BUG_FIX",
+    "MORNING_BRIEFING", "LEARN_PREFERENCE", "GENERAL_CHAT"
 }
 
 class ResponseValidator:
     """
     AI Response Validator ensuring LLM JSON outputs adhere strictly to schema specs.
-    Includes deterministic pattern-matching fallback when LLM is unavailable or un-parseable.
+    Includes fallback parsing across all 7 LordSahu Workspace SDK Modules.
     """
     def validate_or_fallback(self, raw_llm_result: Dict[str, Any], user_text: str) -> Dict[str, Any]:
         if raw_llm_result and isinstance(raw_llm_result, dict):
@@ -27,7 +30,6 @@ class ResponseValidator:
                     "reply": reply
                 }
 
-        # Deterministic Fallback Parser
         intent, entities, memories = self.fallback_parse(user_text)
         return {
             "intent": intent,
@@ -41,90 +43,66 @@ class ResponseValidator:
         entities = {}
         learned_memories = []
 
-        # Detect Queries
+        # Queries
         if any(q in t_lower for q in ["workspace", "workspaces", "all the works"]):
             return "QUERY_WORKSPACES", entities, learned_memories
-
-        if any(q in t_lower for q in ["all my goals", "all goals", "list goals", "my goals", "what are my goals"]):
+        if any(q in t_lower for q in ["all my goals", "all goals", "list goals"]):
             return "QUERY_GOALS", entities, learned_memories
 
-        if any(q in t_lower for q in ["all events", "list events", "my events", "events stream"]):
-            return "QUERY_EVENTS", entities, learned_memories
+        # LIM (Learning)
+        if "learned" in t_lower or "concept" in t_lower:
+            entities["concept_name"] = text.replace("today i learned", "").replace("learned", "").strip() or text
+            return "LOG_CONCEPT", entities, learned_memories
+        if "leetcode" in t_lower or "solved" in t_lower:
+            entities["problem_title"] = text
+            return "LOG_PROBLEM", entities, learned_memories
 
-        if any(q in t_lower for q in ["all tasks", "list tasks", "my tasks", "pending tasks", "todos"]):
-            return "QUERY_TASKS", entities, learned_memories
+        # CIM (Career)
+        if "applied to" in t_lower or "job app" in t_lower:
+            comp = re.search(r"applied to\s+([a-[#a-zA-Z\s]+)", t_lower)
+            entities["company_name"] = comp.group(1).title() if comp else "Target Company"
+            return "LOG_JOB_APP", entities, learned_memories
+        if "resume" in t_lower:
+            entities["summary"] = text
+            return "LOG_RESUME", entities, learned_memories
 
-        if any(q in t_lower for q in ["all memories", "list memories", "my memories"]):
-            return "QUERY_MEMORIES", entities, learned_memories
+        # Finance
+        if "spent" in t_lower or "paid" in t_lower or "rupees" in t_lower or "₹" in t_lower or "dollars" in t_lower or "$" in t_lower:
+            amt_match = re.search(r"(?:₹|\$|rs\.?|spent|paid)\s*(\d+(?:\.\d+)?)", t_lower)
+            entities["amount"] = float(amt_match.group(1)) if amt_match else 100.0
+            entities["description"] = text
+            return "LOG_EXPENSE", entities, learned_memories
 
-        # Detect Self-Learning Preferences
-        pref_triggers = ["i prefer", "i like", "i hate", "don't remind", "always", "never", "remember that"]
-        for tr in pref_triggers:
-            if tr in t_lower:
-                learned_memories.append({
-                    "memory_type": "PREFERENCE" if "prefer" in tr or "like" in tr else "HABIT",
-                    "category": "general",
-                    "fact": text
-                })
-                break
+        # College
+        if "lecture" in t_lower or "attended" in t_lower or "class" in t_lower:
+            entities["subject"] = "DBMS" if "dbms" in t_lower else "Academic Lecture"
+            return "LOG_LECTURE", entities, learned_memories
 
-        # Goal mutations
-        if "delete goal" in t_lower or "remove goal" in t_lower:
-            clean_title = re.sub(r"(delete|remove)\s+goal\s*", "", t_lower).strip()
-            entities["goal_title"] = clean_title or text
-            return "DELETE_GOAL", entities, learned_memories
+        # Projects
+        if "implemented" in t_lower or "feature" in t_lower or "refactored" in t_lower:
+            entities["feature_name"] = text
+            return "LOG_FEATURE", entities, learned_memories
+        if "fixed bug" in t_lower or "debugged" in t_lower:
+            entities["bug_summary"] = text
+            return "LOG_BUG_FIX", entities, learned_memories
 
-        if "add goal" in t_lower or "create goal" in t_lower or "new goal" in t_lower:
-            clean_title = re.sub(r"(add|create|new)\s+goal\s*", "", t_lower).strip()
-            entities["goal_title"] = clean_title or text
-            return "CREATE_GOAL", entities, learned_memories
-
-        if "delete task" in t_lower or "remove task" in t_lower:
-            clean_title = re.sub(r"(delete|remove)\s+task\s*", "", t_lower).strip()
-            entities["task_title"] = clean_title or text
-            return "DELETE_TASK", entities, learned_memories
-
-        if "delete memory" in t_lower or "forget memory" in t_lower:
-            clean_fact = re.sub(r"(delete|forget)\s+(memory|that)?\s*", "", t_lower).strip()
-            entities["memory_fact"] = clean_fact or text
-            return "DELETE_MEMORY", entities, learned_memories
-
-        weight_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:kg|kilos|pounds|lbs)", t_lower)
-        if "weight" in t_lower or weight_match or "weigh" in t_lower:
+        # Fitness Intelligence
+        weight_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:kg|kilos)", t_lower)
+        if "weight" in t_lower or weight_match:
             if weight_match:
                 entities["weight_kg"] = float(weight_match.group(1))
             return "LOG_WEIGHT", entities, learned_memories
 
-        study_keywords = ["study", "studied", "learning", "revised", "read", "sql", "dbms", "lecture", "assignment"]
-        if any(k in t_lower for k in study_keywords):
-            dur_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:hours|hrs|hr|hour|mins|minutes)", t_lower)
-            if dur_match:
-                val = float(dur_match.group(1))
-                entities["duration_hours"] = round(val / 60.0, 2) if "min" in dur_match.group(0) else val
-            else:
-                entities["duration_hours"] = 1.0
-
-            if "sql" in t_lower:
-                entities["subject"] = "SQL Joins & Queries"
-            elif "dbms" in t_lower:
-                entities["subject"] = "DBMS"
-            else:
-                entities["subject"] = "General Learning"
-            return "LOG_STUDY", entities, learned_memories
-
-        workout_keywords = ["workout", "gym", "cardio", "ran", "running", "exercise", "steps", "pushups"]
+        workout_keywords = ["workout", "gym", "chest day", "leg day", "arm day", "back day"]
         if any(k in t_lower for k in workout_keywords):
-            entities["workout_type"] = "Cardio & Fitness"
-            entities["duration_hours"] = 0.5
+            entities["workout_type"] = "Chest Day" if "chest" in t_lower else "General Workout"
             return "LOG_WORKOUT", entities, learned_memories
 
-        task_keywords = ["remind", "reminder", "task", "todo", "schedule"]
-        if any(k in t_lower for k in task_keywords):
-            entities["task_title"] = text
-            return "CREATE_TASK", entities, learned_memories
+        # Default Study
+        study_keywords = ["study", "studied", "learning", "revised", "sql", "dbms"]
+        if any(k in t_lower for k in study_keywords):
+            entities["subject"] = "SQL Joins & Queries" if "sql" in t_lower else "General Learning"
+            entities["duration_hours"] = 1.0
+            return "LOG_STUDY", entities, learned_memories
 
-        if "morning" in t_lower or "briefing" in t_lower or "hello" in t_lower or "hi" in t_lower:
-            return "MORNING_BRIEFING", entities, learned_memories
-
-        intent = "LEARN_PREFERENCE" if learned_memories else "GENERAL_CHAT"
-        return intent, entities, learned_memories
+        return "GENERAL_CHAT", entities, learned_memories

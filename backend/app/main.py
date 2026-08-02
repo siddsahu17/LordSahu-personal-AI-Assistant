@@ -203,6 +203,32 @@ def add_memory(payload: MemoryCreate, db: Session = Depends(get_db)):
     m = mem_eng.add_memory(payload)
     return {"status": "success", "id": m.id}
 
+# --- Workspace SDK Endpoint ---
+@app.get("/api/workspace/overview")
+def get_workspace_overview(workspace_id: str = Query("learning"), user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.workspaces.workspace_sdk import workspace_sdk
+    module = workspace_sdk.get_workspace(workspace_id)
+    if not module:
+        raise HTTPException(status_code=404, detail=f"Workspace '{workspace_id}' not found in Workspace SDK.")
+    return {
+        "workspace_id": module.workspace_id,
+        "workspace_name": module.workspace_name,
+        "overview": module.get_analytics_overview(db, user_id)
+    }
+
+# --- Fitness Intelligence Module Endpoint ---
+@app.get("/api/fitness/overview")
+def get_fitness_overview(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.fitness_analytics import FitnessAnalyticsEngine
+    engine = FitnessAnalyticsEngine(db, user_id)
+    return engine.compute_fitness_overview()
+
+# --- Calendar Provider Endpoint ---
+@app.get("/api/calendar")
+def get_calendar_events():
+    from app.services.calendar_provider import calendar_provider
+    return calendar_provider.list_upcoming_events()
+
 # --- Knowledge Base Endpoints ---
 @app.get("/api/knowledge")
 def list_knowledge(workspace_id: str = Query("all"), db: Session = Depends(get_db)):

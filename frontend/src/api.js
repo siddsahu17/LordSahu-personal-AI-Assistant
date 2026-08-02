@@ -22,6 +22,24 @@ export async function fetchChatHistory() {
   return res.json();
 }
 
+export async function fetchCalendarEvents() {
+  const res = await fetch(`${API_BASE}/calendar`);
+  if (!res.ok) throw new Error('Failed to fetch calendar events');
+  return res.json();
+}
+
+export async function fetchFitnessOverview() {
+  const res = await fetch(`${API_BASE}/fitness/overview`);
+  if (!res.ok) throw new Error('Failed to fetch fitness overview');
+  return res.json();
+}
+
+export async function fetchWorkspaceOverview(workspace_id = 'learning') {
+  const res = await fetch(`${API_BASE}/workspace/overview?workspace_id=${workspace_id}`);
+  if (!res.ok) throw new Error('Failed to fetch workspace overview');
+  return res.json();
+}
+
 export async function fetchGoals(workspace_id = 'all') {
   const res = await fetch(`${API_BASE}/goals?workspace_id=${workspace_id}`);
   if (!res.ok) throw new Error('Failed to fetch goals');
@@ -62,32 +80,19 @@ export async function updateTaskStatus(taskId, status) {
   return res.json();
 }
 
+export async function fetchEvents(workspace_id = 'all', event_type = 'all', search = '') {
+  let url = `${API_BASE}/events?workspace_id=${workspace_id}&event_type=${event_type}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch events');
+  return res.json();
+}
+
 export async function fetchTimeline(search = '') {
-  const query = search ? `?search=${encodeURIComponent(search)}` : '';
-  const res = await fetch(`${API_BASE}/timeline${query}`);
+  let url = `${API_BASE}/timeline`;
+  if (search) url += `?search=${encodeURIComponent(search)}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch timeline');
-  return res.json();
-}
-
-export async function fetchMemories() {
-  const res = await fetch(`${API_BASE}/memories`);
-  if (!res.ok) throw new Error('Failed to fetch memories');
-  return res.json();
-}
-
-export async function fetchKnowledge(workspace_id = 'all') {
-  const res = await fetch(`${API_BASE}/knowledge?workspace_id=${workspace_id}`);
-  if (!res.ok) throw new Error('Failed to fetch knowledge docs');
-  return res.json();
-}
-
-export async function uploadKnowledgeDoc(docData) {
-  const res = await fetch(`${API_BASE}/knowledge`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(docData)
-  });
-  if (!res.ok) throw new Error('Failed to upload document');
   return res.json();
 }
 
@@ -97,8 +102,35 @@ export async function fetchReports(timeframe = 'weekly') {
   return res.json();
 }
 
+export async function fetchAnalytics(timeframe = '14d') {
+  const res = await fetch(`${API_BASE}/analytics?timeframe=${timeframe}`);
+  if (!res.ok) throw new Error('Failed to fetch analytics');
+  return res.json();
+}
+
+export async function fetchMemories(memory_type = 'ALL', category = 'ALL') {
+  const res = await fetch(`${API_BASE}/memories?memory_type=${memory_type}&category=${category}`);
+  if (!res.ok) throw new Error('Failed to fetch memories');
+  return res.json();
+}
+
 export async function fetchWorkspaces() {
   const res = await fetch(`${API_BASE}/workspaces`);
   if (!res.ok) throw new Error('Failed to fetch workspaces');
+  return res.json();
+}
+
+export async function fetchKnowledge(workspace_id = 'all') {
+  const res = await fetch(`${API_BASE}/knowledge?workspace_id=${workspace_id}`);
+  if (!res.ok) throw new Error('Failed to fetch knowledge');
+  return res.json();
+}
+
+export async function uploadKnowledgeDoc(formData) {
+  const res = await fetch(`${API_BASE}/knowledge`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) throw new Error('Failed to upload knowledge doc');
   return res.json();
 }

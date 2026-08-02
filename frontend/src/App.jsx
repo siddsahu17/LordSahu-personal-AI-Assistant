@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navigation from './components/Navigation';
 import LandingPage from './components/LandingPage';
+import MissionControl from './components/MissionControl';
 import Dashboard from './components/Dashboard';
 import Chat from './components/Chat';
 import Goals from './components/Goals';
@@ -75,11 +76,10 @@ export default function App() {
           />
         )}
         {activeTab === 'dashboard' && (
-          <Dashboard
-            data={dashboardData}
-            onQuickChat={handleQuickChat}
-            onNavigate={(tab) => setActiveTab(tab)}
+          <MissionControl
             currentMode={currentMode}
+            setCurrentMode={setCurrentMode}
+            activeWorkspace={activeWorkspace}
           />
         )}
         {activeTab === 'chat' && (
