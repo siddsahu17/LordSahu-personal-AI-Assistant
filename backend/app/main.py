@@ -69,11 +69,33 @@ app.add_middleware(
 def health_check():
     return {"status": "online", "system": "LordSahu AI OS", "version": "0.1.0"}
 
-# --- Chat & Core Intelligence Endpoint ---
+# --- Chat & Core Intelligence Endpoints ---
 @app.post("/api/chat", response_model=ChatResponse)
 def handle_chat(payload: ChatMessageCreate, db: Session = Depends(get_db)):
     orchestrator = CoreOrchestrator(db)
     return orchestrator.process_message(payload)
+
+@app.get("/api/chat/history")
+def get_chat_history(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.models import ChatMessageModel
+    messages = (
+        db.query(ChatMessageModel)
+        .filter(ChatMessageModel.user_id == user_id)
+        .order_by(ChatMessageModel.created_at.asc())
+        .limit(50)
+        .all()
+    )
+    return [
+        {
+            "id": m.id,
+            "sender": m.sender,
+            "mode": m.mode,
+            "text": m.text,
+            "intent": m.intent,
+            "created_at": m.created_at.isoformat() if m.created_at else None
+        }
+        for m in messages
+    ]
 
 # --- Mission Control Dashboard Endpoint ---
 @app.get("/api/dashboard")
@@ -88,14 +110,14 @@ def get_dashboard(user_id: str = "default_user", db: Session = Depends(get_db)):
     analytics = analytics_eng.compute_analytics()
     recent_events = event_eng.query_events(limit=10)
 
-    # Morning briefing structure
+    # Briefing structure generated directly from real DB context
     morning_briefing = {
         "user_name": "Siddhant",
-        "greeting": f"Good morning Siddhant.",
+        "greeting": "Good morning Siddhant.",
         "sleep_hours": 7.0,
-        "current_weight_kg": context["current_weight_kg"] or 96.8,
-        "top_priority_today": "DBMS & SQL Joins Assignment",
-        "coach_advice": "Your consistency is up 18%! Focus on your DBMS assignment today.",
+        "current_weight_kg": context["current_weight_kg"],
+        "top_priority_today": goals[0]["title"] if goals else "No active goals yet",
+        "coach_advice": f"Your Event Store has {len(recent_events)} recent events recorded. Consistency Score: {analytics['consistency_score']}%.",
         "goals_summary": goals
     }
 

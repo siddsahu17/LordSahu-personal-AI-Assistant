@@ -5,44 +5,14 @@ from sqlalchemy.orm import Session
 from app.models import KnowledgeDocModel
 from app.schemas import KnowledgeDocCreate
 
-DEFAULT_KNOWLEDGE = [
-    {
-        "title": "DBMS Semester 5 Syllabus & Exam Schedule",
-        "workspace_id": "learning",
-        "doc_type": "syllabus",
-        "content": "Course covers Relational Algebra, SQL Joins, Indexing, Transactions, Normalization 1NF to BCNF, and ER Diagrams. Final Exam in December."
-    },
-    {
-        "title": "Hypertrophy Workout & Fitness Blueprint",
-        "workspace_id": "fitness",
-        "doc_type": "workout_plan",
-        "content": "Push/Pull/Legs 4-day split. Target 10,000 steps daily. Target weight 80kg with calorie deficit of 500 kcal/day."
-    }
-]
-
 class KnowledgeEngine:
     """
-    Knowledge Engine manages document storage (PDFs, resumes, syllabi) and semantic knowledge retrieval.
+    Knowledge Engine manages document storage and RAG context retrieval directly from SQLite.
+    No mock or dummy documents are seeded.
     """
     def __init__(self, db: Session, user_id: str = "default_user"):
         self.db = db
         self.user_id = user_id
-        self._ensure_defaults()
-
-    def _ensure_defaults(self):
-        count = self.db.query(KnowledgeDocModel).filter(KnowledgeDocModel.user_id == self.user_id).count()
-        if count == 0:
-            for doc in DEFAULT_KNOWLEDGE:
-                db_doc = KnowledgeDocModel(
-                    id=str(uuid.uuid4()),
-                    user_id=self.user_id,
-                    workspace_id=doc["workspace_id"],
-                    title=doc["title"],
-                    doc_type=doc["doc_type"],
-                    content=doc["content"]
-                )
-                self.db.add(db_doc)
-            self.db.commit()
 
     def add_document(self, doc_data: KnowledgeDocCreate) -> KnowledgeDocModel:
         db_doc = KnowledgeDocModel(

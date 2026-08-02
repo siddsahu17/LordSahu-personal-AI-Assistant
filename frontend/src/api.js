@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || (typeof window !== 'undefined' && window.location.hostname === 'localhost' && window.location.port === '5173' ? 'http://localhost:8000/api' : '/api');
 
 export async function fetchDashboard() {
   const res = await fetch(`${API_BASE}/dashboard`);
@@ -13,6 +13,12 @@ export async function sendChatMessage(text, mode = 'assistant', workspace_id = '
     body: JSON.stringify({ text, mode, workspace_id })
   });
   if (!res.ok) throw new Error('Failed to send message');
+  return res.json();
+}
+
+export async function fetchChatHistory() {
+  const res = await fetch(`${API_BASE}/chat/history`);
+  if (!res.ok) throw new Error('Failed to fetch chat history');
   return res.json();
 }
 

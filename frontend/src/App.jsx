@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navigation from './components/Navigation';
 import LandingPage from './components/LandingPage';
-import AuthModal from './components/AuthModal';
 import Dashboard from './components/Dashboard';
 import Chat from './components/Chat';
 import Goals from './components/Goals';
@@ -21,7 +20,6 @@ export default function App() {
   const [currentMode, setCurrentMode] = useState('assistant');
   const [activeWorkspace, setActiveWorkspace] = useState('all');
   const [dashboardData, setDashboardData] = useState(null);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const [workspaces, setWorkspaces] = useState([
     { id: 'learning', name: 'Learning' },
@@ -57,7 +55,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f7f4ed] text-slate-900 flex flex-col font-sans selection:bg-yellow-300 selection:text-black">
-      {/* Navigation Header */}
+      {/* Fixed Spacing Navigation Header */}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -66,11 +64,10 @@ export default function App() {
         activeWorkspace={activeWorkspace}
         setActiveWorkspace={setActiveWorkspace}
         workspaces={workspaces}
-        onOpenAuth={() => setIsAuthOpen(true)}
       />
 
-      {/* Main Content View */}
-      <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto">
+      {/* Main View Area */}
+      <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto space-y-6">
         {activeTab === 'landing' && (
           <LandingPage
             onLaunch={() => setActiveTab('dashboard')}
@@ -123,13 +120,6 @@ export default function App() {
           <Profile />
         )}
       </main>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        onLoginSuccess={() => setActiveTab('dashboard')}
-      />
 
       {/* Footer */}
       <footer className="border-t-3 border-black bg-white py-4 text-center text-xs font-black text-slate-800 shadow-[0_-4px_0_0_#000]">

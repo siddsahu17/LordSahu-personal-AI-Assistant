@@ -4,7 +4,8 @@ from app.modules.analytics_engine import AnalyticsEngine
 
 class ReportGenerator:
     """
-    Report Generator produces Daily, Weekly, and Monthly reviews featuring qualitative AI reflections.
+    Report Generator produces reflections based 100% on real Event Store records in SQLite.
+    No mock data.
     """
     def __init__(self, db: Session, user_id: str = "default_user"):
         self.db = db
@@ -13,77 +14,35 @@ class ReportGenerator:
 
     def generate_report(self, timeframe: str = "weekly") -> Dict[str, Any]:
         metrics = self.analytics.compute_analytics()
+        has_events = metrics.get("total_study_hours", 0) > 0 or metrics.get("latest_weight_kg") is not None or metrics.get("consistency_score", 0) > 0
 
-        if timeframe == "daily":
+        if not has_events:
             return {
-                "timeframe": "Daily Reflection",
-                "period": "Today",
-                "reflection": (
-                    "Solid progress today! You logged 3.5 focus hours on DBMS & SQL Joins and kept your streak alive. "
-                    "Weight recorded at 96.8 kg (down 0.3 kg from earlier this week). Keep up the evening hydration."
-                ),
-                "strengths": [
-                    "High focus block on relational queries",
-                    "Consistent weight check-in at morning awakening",
-                    "Maintained positive momentum score (7.2/10)"
-                ],
-                "weaknesses": [
-                    "Skipped scheduled 20-minute cardio block",
-                    "Studied late past midnight—watch your sleep recovery"
-                ],
-                "recommendations": [
-                    "Schedule a 30-minute DBMS assignment review session at 10 AM tomorrow.",
-                    "Complete a light 20-minute morning cardio session before starting heavy study."
-                ],
+                "timeframe": f"{timeframe.capitalize()} Report",
+                "period": f"Current {timeframe.capitalize()}",
+                "reflection": "No life events logged yet in your Event Store. Talk to LordSahu or record an event to generate your first AI reflection report!",
+                "strengths": ["System ready to log events"],
+                "weaknesses": ["No events recorded yet"],
+                "recommendations": ["Log your first weight, study session, or workout via LordSahu Chat."],
                 "metrics": metrics
             }
 
-        elif timeframe == "weekly":
-            return {
-                "timeframe": "Weekly Review",
-                "period": "Past 7 Days",
-                "reflection": (
-                    "Your study consistency improved 18% compared to last week! "
-                    "You completed 14.5 study hours in DBMS & SQL Joins and reduced your bodyweight to 96.8 kg. "
-                    "Your goal velocity is currently peaking at 8.4 points."
-                ),
-                "strengths": [
-                    "18% overall consistency improvement week-over-week",
-                    "DBMS SQL milestone reached 43% completion",
-                    "Strong memory context retention in chat interactions"
-                ],
-                "weaknesses": [
-                    "Cardio workout frequency dropped on Thursday during peak study pressure",
-                    "Burnout risk score reached 27.5% due to long uninterrupted study blocks"
-                ],
-                "recommendations": [
-                    "Incorporate 10-minute micro-breaks after every 50 minutes of DBMS practice.",
-                    "Set a hard cutoff at 11:00 PM for study sessions to protect 7.5 hours of sleep."
-                ],
-                "metrics": metrics
-            }
+        weight_str = f"Current weight: {metrics['latest_weight_kg']} kg." if metrics.get('latest_weight_kg') else ""
+        study_str = f"Logged {metrics['total_study_hours']} study hours." if metrics.get('total_study_hours') else ""
 
-        else:  # monthly
-            return {
-                "timeframe": "Monthly Report",
-                "period": "Past 30 Days",
-                "reflection": (
-                    "Remarkable monthly trajectory! Bodyweight dropped from ~99.0 kg down to 96.8 kg (-2.2 kg net loss). "
-                    "DBMS and SQL mastery is on track for 100% completion before December exams. "
-                    "LordSahu has recorded 48 meaningful life events in your Event Store this month."
-                ),
-                "strengths": [
-                    "2.2 kg total bodyweight reduction achieved",
-                    "Over 42 hours logged in Learning & DBMS Workspace",
-                    "Consistent daily voice/text interactions with LordSahu OS"
-                ],
-                "weaknesses": [
-                    "Weekend workouts lack structured progressive overload",
-                    "Hydration logs missing on 8 out of 30 days"
-                ],
-                "recommendations": [
-                    "Begin advanced DBMS Indexing & Normalization module next week.",
-                    "Lock in morning cardio routines as non-negotiable anchor events."
-                ],
-                "metrics": metrics
-            }
+        return {
+            "timeframe": f"{timeframe.capitalize()} Reflection",
+            "period": f"Past {timeframe}",
+            "reflection": f"Report generated from Event Store. Consistency Score: {metrics['consistency_score']}%. {study_str} {weight_str}",
+            "strengths": [
+                f"Consistency score currently at {metrics['consistency_score']}%",
+                f"Total study hours logged: {metrics['total_study_hours']}h"
+            ],
+            "weaknesses": [
+                "Track workouts consistently to boost health momentum" if metrics.get('workout_consistency', 0) < 50 else "Maintain current rest balance"
+            ],
+            "recommendations": [
+                "Continue logging events daily to keep your AI Personal Operating System synchronized."
+            ],
+            "metrics": metrics
+        }

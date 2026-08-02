@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: lordsahu/backend:latest
+    container_name: lordsahu_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - lordsahu_data:/app/data
+      - ./backend/.env:/app/.env
+    environment:
+      - DATABASE_URL=sqlite:////app/data/lordsahu.db
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: lordsahu/frontend:latest
+    container_name: lordsahu_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  lordsahu_data:
+    driver: local
