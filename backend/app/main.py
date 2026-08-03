@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File
@@ -166,7 +167,7 @@ def update_task_status(task_id: str, new_status: str = Query(...), db: Session =
 @app.get("/api/events")
 def list_events(workspace_id: str = Query("all"), event_type: str = Query("all"), search: str = Query(None), db: Session = Depends(get_db)):
     event_eng = EventEngine(db)
-    return event_eng.query_events(workspace_id=workspace_id, event_type=event_type, search_query=search)
+    return event_eng.query_events(workspace_id=workspace_id, event_type=event_type, search=search)
 
 @app.post("/api/events")
 def create_event(payload: EventCreate, db: Session = Depends(get_db)):
@@ -190,7 +191,6 @@ def list_memories(memory_type: str = Query(None), category: str = Query(None), d
             "memory_type": m.memory_type,
             "category": m.category,
             "fact": m.fact,
-            "relationship_entity": m.relationship_entity,
             "confidence": m.confidence,
             "created_at": m.created_at.isoformat() if m.created_at else None
         }
@@ -202,6 +202,123 @@ def add_memory(payload: MemoryCreate, db: Session = Depends(get_db)):
     mem_eng = MemoryEngine(db)
     m = mem_eng.add_memory(payload)
     return {"status": "success", "id": m.id}
+
+# --- Daily Planner V1.4 Endpoints ---
+@app.get("/api/planner/today")
+def get_today_planner(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.daily_planner_engine import DailyPlannerEngine
+    engine = DailyPlannerEngine(db, user_id)
+    return engine.get_today_planner()
+
+@app.post("/api/planner/items")
+def add_planner_item(payload: Dict[str, Any], user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.daily_planner_engine import DailyPlannerEngine
+    engine = DailyPlannerEngine(db, user_id)
+    return engine.add_item_to_today(
+        title=payload.get("title", "New Task"),
+        priority=payload.get("priority", "medium"),
+        start_time=payload.get("start_time"),
+        end_time=payload.get("end_time"),
+        estimated_duration=payload.get("estimated_duration"),
+        repeat_rule=payload.get("repeat_rule"),
+        planner_source=payload.get("planner_source", "user"),
+        domains=payload.get("domains", ["personal"])
+    )
+
+@app.patch("/api/planner/items/{item_id}")
+def update_planner_item(item_id: str, payload: Dict[str, Any], db: Session = Depends(get_db)):
+    from app.repositories.daily_planner_repository import DailyPlannerRepository
+    repo = DailyPlannerRepository(db)
+    res = repo.update_item(item_id, payload)
+    if not res:
+        raise HTTPException(status_code=404, detail="Planner item not found")
+    return {"status": "success", "item_id": res.id, "new_status": res.status}
+
+@app.delete("/api/planner/items/{item_id}")
+def delete_planner_item(item_id: str, db: Session = Depends(get_db)):
+    from app.repositories.daily_planner_repository import DailyPlannerRepository
+    repo = DailyPlannerRepository(db)
+    success = repo.delete_item(item_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Planner item not found")
+    return {"status": "success", "deleted_item_id": item_id}
+
+@app.post("/api/planner/carry-forward")
+def carry_forward_planner(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.daily_planner_engine import DailyPlannerEngine
+    engine = DailyPlannerEngine(db, user_id)
+    return engine.carry_forward_unfinished()
+
+@app.post("/api/planner/morning-brief")
+def generate_morning_brief(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.daily_planner_engine import DailyPlannerEngine
+    engine = DailyPlannerEngine(db, user_id)
+    return engine.generate_morning_brief()
+
+@app.post("/api/planner/evening-shutdown")
+def run_evening_shutdown(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.daily_planner_engine import DailyPlannerEngine
+    engine = DailyPlannerEngine(db, user_id)
+    return engine.run_evening_shutdown()
+
+@app.get("/api/planner/templates")
+def list_planner_templates(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.repositories.daily_planner_repository import DailyPlannerRepository
+    repo = DailyPlannerRepository(db)
+    templates = repo.list_templates(user_id)
+    return [
+        {"id": t.id, "name": t.name, "description": t.description, "items": json.loads(t.items_json) if t.items_json else []}
+        for t in templates
+    ]
+
+# --- LifeEntry & Daily Chronicle V1 Endpoints ---
+@app.get("/api/life-entries")
+def list_life_entries(
+    domain: str = Query("all"),
+    category: str = Query("all"),
+    search: str = Query(None),
+    status: str = Query("active"),
+    user_id: str = "default_user",
+    db: Session = Depends(get_db)
+):
+    from app.repositories.life_entry_repository import LifeEntryRepository
+    repo = LifeEntryRepository(db)
+    entries = repo.query_entries(user_id=user_id, domain=domain, category=category, search_query=search, status=status)
+    return [
+        {
+            "id": e.id,
+            "timestamp": e.timestamp.strftime("%Y-%m-%d %H:%M:%S") if e.timestamp else "",
+            "domains": json.loads(e.domains) if e.domains else [],
+            "category": e.category,
+            "title": e.title,
+            "raw_text": e.raw_text,
+            "structured_data": json.loads(e.structured_data) if e.structured_data else {},
+            "ai_summary": e.ai_summary,
+            "confidence": e.confidence,
+            "source": e.source,
+            "entry_status": e.entry_status,
+            "tags": json.loads(e.tags) if e.tags else []
+        }
+        for e in entries
+    ]
+
+@app.get("/api/daily-chronicle")
+def get_daily_chronicle(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.life_entry_engine import LifeEntryEngine
+    engine = LifeEntryEngine(db, user_id)
+    return engine.generate_daily_chronicle()
+
+@app.get("/api/life-insights")
+def get_life_insights(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.modules.life_entry_engine import LifeEntryEngine
+    engine = LifeEntryEngine(db, user_id)
+    return engine.compute_5_core_insights()
+
+@app.get("/api/life-entries/recent-topic")
+def get_recent_topic(user_id: str = "default_user", db: Session = Depends(get_db)):
+    from app.repositories.life_entry_repository import LifeEntryRepository
+    repo = LifeEntryRepository(db)
+    return repo.get_recent_active_topic(user_id=user_id)
 
 # --- Workspace SDK Endpoint ---
 @app.get("/api/workspace/overview")

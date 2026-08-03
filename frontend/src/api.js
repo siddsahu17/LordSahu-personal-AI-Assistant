@@ -22,6 +22,85 @@ export async function fetchChatHistory() {
   return res.json();
 }
 
+// Daily Planner API Helpers
+export async function fetchTodayPlanner() {
+  const res = await fetch(`${API_BASE}/planner/today`);
+  if (!res.ok) throw new Error('Failed to fetch today planner');
+  return res.json();
+}
+
+export async function addPlannerItem(itemData) {
+  const res = await fetch(`${API_BASE}/planner/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(itemData)
+  });
+  if (!res.ok) throw new Error('Failed to add planner item');
+  return res.json();
+}
+
+export async function updatePlannerItem(itemId, updateData) {
+  const res = await fetch(`${API_BASE}/planner/items/${itemId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updateData)
+  });
+  if (!res.ok) throw new Error('Failed to update planner item');
+  return res.json();
+}
+
+export async function deletePlannerItem(itemId) {
+  const res = await fetch(`${API_BASE}/planner/items/${itemId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to delete planner item');
+  return res.json();
+}
+
+export async function carryForwardPlanner() {
+  const res = await fetch(`${API_BASE}/planner/carry-forward`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to carry forward planner');
+  return res.json();
+}
+
+export async function generateMorningBrief() {
+  const res = await fetch(`${API_BASE}/planner/morning-brief`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to generate morning brief');
+  return res.json();
+}
+
+export async function runEveningShutdown() {
+  const res = await fetch(`${API_BASE}/planner/evening-shutdown`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to run evening shutdown');
+  return res.json();
+}
+
+export async function fetchLifeEntries(domain = 'all', category = 'all', search = '') {
+  let url = `${API_BASE}/life-entries?domain=${domain}&category=${category}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch life entries');
+  return res.json();
+}
+
+export async function fetchDailyChronicle() {
+  const res = await fetch(`${API_BASE}/daily-chronicle`);
+  if (!res.ok) throw new Error('Failed to fetch daily chronicle');
+  return res.json();
+}
+
+export async function fetchLifeInsights() {
+  const res = await fetch(`${API_BASE}/life-insights`);
+  if (!res.ok) throw new Error('Failed to fetch life insights');
+  return res.json();
+}
+
+export async function fetchRecentTopic() {
+  const res = await fetch(`${API_BASE}/life-entries/recent-topic`);
+  if (!res.ok) throw new Error('Failed to fetch recent topic');
+  return res.json();
+}
+
 export async function fetchCalendarEvents() {
   const res = await fetch(`${API_BASE}/calendar`);
   if (!res.ok) throw new Error('Failed to fetch calendar events');
